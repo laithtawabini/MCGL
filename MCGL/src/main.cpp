@@ -15,12 +15,30 @@
 #include "vendor/glm/gtc/matrix_transform.hpp"
 #include "vendor/glm/gtc/type_ptr.hpp"
 
-
-const int WIDTH = 1280;
-const int HEIGHT = 720; 
-
 void processInput(GLFWwindow* window);
+void mouseCallback(GLFWwindow* window, double xpos, double ypos);
 
+//#------------------Window settings-------------------#//
+const unsigned int WIDTH  = 1280;
+const unsigned int HEIGHT = 720; 
+
+//#------------------Timings---------------------#//
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+
+//#------------------Camera-------------------#//
+glm::vec3 eyeLocation    = glm::vec3(0.0f, 0.0f, 3.0f),
+          targetLocation = glm::vec3(0.0f, 0.0f, -1.0f),
+          up             = glm::vec3(0.0f, 1.0f, 0.0f);
+
+//middle of the screen (intial starting position of the mouse)
+float lastX = (float) WIDTH / 2.0f,
+      lastY = (float) HEIGHT / 2.0f;
+
+bool firstMouse = true;
+
+float yaw   = -90.0f;
+float pitch = 0.0f;
 
 
 int main()
@@ -39,8 +57,12 @@ int main()
         glfwTerminate();
         exit(-1);
     }
-
+    
     glfwMakeContextCurrent(window);
+
+    glfwSetCursorPosCallback(window, mouseCallback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    //this is called whenever you move the cursor
 
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cout << "Failed to init GLAD\n";
@@ -53,17 +75,20 @@ int main()
         glViewport(0, 0, WIDTH, HEIGHT);
     });
 
+    
+
     //#------------------Shaders and Coordinates/shapes-------------------#// 
-    unsigned int ID = Shader("C:\\Dev\\OpenGL\\VSC\\OpenGL1\\src\\shader.glsl").ID;
+    unsigned int shaderID = Shader("C:\\Dev\\OpenGL\\MCGL\\MCGL\\src\\shader.glsl").ID;
 
     Cube cube;
+    Arrow arrow;
 
     unsigned int indices[] = {
         0, 1, 3, // first triangle
         1, 2, 3
     };
 
-    //#------------------Data buffers-------------------#// 
+    //#------------------Cube Data buffers-------------------#// 
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
 
@@ -82,104 +107,81 @@ int main()
     // glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
     // glEnableVertexAttribArray(2);
 
+    
+
 
     //#------------------Textures-------------------#// 
     std::unordered_map<std::string, Texture> texs;
-    texs["Container"]
-        .addTexture("C:\\Dev\\OpenGL\\VSC\\OpenGL1\\res\\textures\\Container.jpg");
-    texs["Container"]
-        .addTexture("C:\\Dev\\OpenGL\\VSC\\OpenGL1\\res\\textures\\Luigi.png");
     
-    glUseProgram(ID);
-    glUniform1i(glGetUniformLocation(ID, "texture1"), 0);
-    glUniform1i(glGetUniformLocation(ID, "texture2"), 1);
-    //#------------------Camera-------------------#//
-        //where the camera is initially placed
-    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-        //where the camera points to
-    glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+    texs["Container"]
+        .addTexture("C:\\Dev\\OpenGL\\MCGL\\MCGL\\res\\textures\\Container.jpg");
+    texs["Container"]
+        .addTexture("C:\\Dev\\OpenGL\\MCGL\\MCGL\\res\\textures\\Luigi.png");
+    
 
-    //if we substract them we get the camera's-target direction
-    //If we switch the subtraction order around we now get a vector pointing towards the camera's positive z-axis:
-    glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
+    glUseProgram(shaderID);
+    glUniform1i(glGetUniformLocation(shaderID, "texture1"), 0);
+    glUniform1i(glGetUniformLocation(shaderID, "texture2"), 1);
     
+
     //#------------------Transformations-------------------#//
-    glm::mat4 model, view, projection = glm::mat4(1.0f);
+    glm::mat4 model,
+              view,
+              projection = glm::mat4(1.0f);
 
-    projection = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
-    glUniformMatrix4fv(glGetUniformLocation(ID, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+    uint32_t modelLoc      = glGetUniformLocation(shaderID, "model"),
+             viewLoc       = glGetUniformLocation(shaderID, "view"),
+             projectionLoc = glGetUniformLocation(shaderID, "projection");
 
-    float velocity = 0.0350f;
-    float ForwardBack = 0.f;
-    float RightLeft = 0.f;
-    float TopDown = 0.f;
+    projection = glm::perspective(glm::radians(60.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
     
-    glm::vec3 movement;
     //#------------------Additional Configuration-------------------#// 
 
     glEnable(GL_DEPTH_TEST);  
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    
 
     //#------------------Main Rendering Loop-------------------#// 
     while(!glfwWindowShouldClose(window))
     {
+
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+        const float cameraSpeed = 2.5f * deltaTime; // adjust accordingly
+
         processInput(window);
-
-        //opposite of logic because we are moving the blocks, not the actual character
-        if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-            ForwardBack += -velocity;
         
-        if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-            ForwardBack += velocity;
-
-        if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-            RightLeft += -velocity; 
-
-        if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-            RightLeft += velocity;
-
-        if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-            TopDown += velocity;
-
-        if(glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-            TopDown += -velocity;
-
-        movement.x = RightLeft;
-        movement.y = ForwardBack;
-        movement.z = TopDown;
-
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        glUseProgram(shaderID);
         texs["Container"].Bind();
-        glUseProgram(ID);
-        
+
+        view = glm::lookAt(eyeLocation, eyeLocation + targetLocation, up);
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
         for(int z = 0; z < 5; z++)
         {
             for(int i = 0; i < 5; i++)
             {
                 //initialize
                 model = glm::mat4(1.0f);
-                view = glm::mat4(1.0f);
                 
                 //configure positions
-                model = glm::rotate(model, glm::radians(-73.0f), glm::vec3(0.5f, 0.0f, 0.0f));
-                                                                    // (-z) generate blocks on next line
-                model = glm::translate(model, glm::vec3(0.0f, 0.0f - z, 0.0f));
+                model = glm::translate(model, glm::vec3(0.0f - i, 0.0f , 0.0f - z));
 
-                view = glm::translate(view, glm::vec3((float)i - 2.0f , 0.0f, -10.0f));
                 //send data
-                glUniformMatrix4fv(
-                    glGetUniformLocation(ID, "model"), 1, GL_FALSE, glm::value_ptr(model));
-                glUniformMatrix4fv(
-                    glGetUniformLocation(ID, "view"), 1, GL_FALSE, glm::value_ptr(view));
+                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+                
 
                 //draw
                 glBindVertexArray(VAO);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
             }
         }
-        
+
         glfwSwapBuffers(window);
 		glfwPollEvents();
     }
@@ -195,4 +197,60 @@ void processInput(GLFWwindow* window)
 {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
+    const float cameraSpeed = 2.5f * deltaTime;
+    
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        eyeLocation += cameraSpeed * targetLocation;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        eyeLocation -= cameraSpeed * targetLocation;
+    
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        eyeLocation -= glm::normalize(glm::cross(targetLocation, up)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        eyeLocation += glm::normalize(glm::cross(targetLocation, up)) * cameraSpeed;
+    
+    if (glfwGetKey(window, GLFW_KEY_SPACE))
+        eyeLocation += up * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT))
+        eyeLocation -= up * cameraSpeed;
+
 }
+
+void mouseCallback(GLFWwindow* window, double xposIn, double yposIn)
+{
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
+
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    lastX = xpos;
+    lastY = ypos;
+
+    float sensitivity = 0.1f; 
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yaw += xoffset;
+    pitch += yoffset;
+
+    // prevent screen from flipping
+    if (pitch > 89.0f)
+        pitch = 89.0f;
+    if (pitch < -89.0f)
+        pitch = -89.0f;
+
+    glm::vec3 target;
+    target.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    target.y = sin(glm::radians(pitch));
+    target.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+
+    targetLocation = glm::normalize(target);
+};

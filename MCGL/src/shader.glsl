@@ -1,4 +1,4 @@
-#shader vertex
+//#shader vertex
 #version 330 core
 
 layout (location = 0) in vec3 aPos;
@@ -20,7 +20,7 @@ void main()
 }
 
 
-#shader fragment
+//#shader fragment
 #version 330 core
 out vec4 FragColor;
   
@@ -34,7 +34,8 @@ uniform float transparency;
 void main()
 {
     // FragColor = mix(texture(texture1, vec2(TexCoord.x / 2, TexCoord.y)), texture(texture2, TexCoord), transparency);
-    FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), 0.2);
+    FragColor = mix(texture(texture1, TexCoord), texture(texture2, TexCoord), 0.5);
+    
 }
 
 

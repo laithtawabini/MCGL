@@ -8,7 +8,7 @@ void Shader::createProgram(const ShaderSource& src)
 
 	const char* vsString = src.vertexShader.c_str();
 	const char* fsString = src.fragmentShader.c_str();
-
+	
 	glShaderSource(vs, 1, &vsString, nullptr);
 	glShaderSource(fs, 1, &fsString, nullptr);
 
