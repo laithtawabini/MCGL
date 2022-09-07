@@ -10,13 +10,12 @@
 #include <iostream>
 #include <vector>
 #include <unordered_map>
-
+#include "Camera.h"
 #include "vendor/glm/glm.hpp"
 #include "vendor/glm/gtc/matrix_transform.hpp"
 #include "vendor/glm/gtc/type_ptr.hpp"
 
 void processInput(GLFWwindow* window);
-void mouseCallback(GLFWwindow* window, double xpos, double ypos);
 
 //#------------------Window settings-------------------#//
 const unsigned int WIDTH  = 1280;
@@ -26,30 +25,12 @@ const unsigned int HEIGHT = 720;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-//#------------------Camera-------------------#//
-glm::vec3 eyeLocation    = glm::vec3(0.0f, 0.0f, 3.0f),
-          targetLocation = glm::vec3(0.0f, 0.0f, -1.0f),
-          up             = glm::vec3(0.0f, 1.0f, 0.0f);
-
-//middle of the screen (intial starting position of the mouse)
-float lastX = (float) WIDTH / 2.0f,
-      lastY = (float) HEIGHT / 2.0f;
-
+//#------------------Camera---------------------#//
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+float lastX = WIDTH / 2.0f;
+float lastY = HEIGHT / 2.0f;
 bool firstMouse = true;
 
-float yaw   = -90.0f;
-float pitch = 0.0f;
-
-float cameraSpeed = 2.5f * deltaTime;
-
-//#------------------Collision purposes-------------------#//
-enum moveDirection
-{
-    FRONT, BACKWARDS, ABOVE, BELOW, LEFT_SIDE, RIGHT_SIDE
-};
-glm::vec3 blocks[5][5];
-bool collides(moveDirection);
-    
 
 int main()
 {
@@ -70,7 +51,25 @@ int main()
     
     glfwMakeContextCurrent(window);
 
-    glfwSetCursorPosCallback(window, mouseCallback);
+    glfwSetCursorPosCallback(window, [](GLFWwindow* window, double xposIn, double yposIn) {
+        float xpos = static_cast<float>(xposIn);
+        float ypos = static_cast<float>(yposIn);
+
+        if (firstMouse)
+        {
+            lastX = xpos;
+            lastY = ypos;
+            firstMouse = false;
+        }
+
+        float xoffset = xpos - lastX;
+        float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+
+        lastX = xpos;
+        lastY = ypos;
+
+        camera.ProcessMouseMovement(xoffset, yoffset);
+        });
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     //this is called whenever you move the cursor
 
@@ -150,7 +149,6 @@ int main()
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        const float cameraSpeed = 2.5f * deltaTime; // adjust accordingly
 
         processInput(window);
         
@@ -160,7 +158,8 @@ int main()
         glUseProgram(shaderID);
         texs["Container"].Bind();
 
-        view = glm::lookAt(eyeLocation, eyeLocation + targetLocation, up);
+        projection = glm::perspective(camera.Zoom, (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+        view = camera.GetViewMatrix();
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
         for(int z = 0; z < 5; z++)
@@ -174,7 +173,6 @@ int main()
                 glm::vec3 positionInWorld = glm::vec3(0.0f - i, 0.0f, 0.0f - z);
                 model = glm::translate(model, positionInWorld);
 
-                blocks[z][i] = positionInWorld;
                 //send data
                 glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
                 
@@ -197,111 +195,23 @@ int main()
 
 void processInput(GLFWwindow* window)
 {
-    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
     
-    cameraSpeed = 2.5f * deltaTime;
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && !collides(moveDirection::FRONT))
-        eyeLocation += cameraSpeed * targetLocation;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS && !collides(moveDirection::BACKWARDS))
-        eyeLocation -= cameraSpeed * targetLocation;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera.ProcessKeyboard(Camera_Movement::FORWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera.ProcessKeyboard(Camera_Movement::BACKWARD, deltaTime);
     
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS && !collides(moveDirection::LEFT_SIDE))
-        eyeLocation -= glm::normalize(glm::cross(targetLocation, up)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && !collides(moveDirection::RIGHT_SIDE))
-        eyeLocation += glm::normalize(glm::cross(targetLocation, up)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera.ProcessKeyboard(Camera_Movement::LEFT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera.ProcessKeyboard(Camera_Movement::RIGHT, deltaTime);
     
-    if (glfwGetKey(window, GLFW_KEY_SPACE))
+    /*if (glfwGetKey(window, GLFW_KEY_SPACE))
         eyeLocation += up * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT))
-        eyeLocation -= up * cameraSpeed;
+        eyeLocation -= up * cameraSpeed;*/
 
 }
 
-void mouseCallback(GLFWwindow* window, double xposIn, double yposIn)
-{
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
-    
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-
-    //Calculating the change in x and y from previous x and y and the changed ones
-    //offset = change (displacement)
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-    lastX = xpos;
-    lastY = ypos;
-
-    float sensitivity = 0.1f; 
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    yaw += xoffset;
-    pitch += yoffset;
-
-    // prevent screen from flipping
-    if (pitch > 89.0f)
-        pitch = 89.0f;
-
-    if (pitch < -89.0f)
-        pitch = -89.0f;
-
-    glm::vec3 target;
-    target.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    target.y = sin(glm::radians(pitch));
-    target.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-
-    targetLocation = glm::normalize(target);
-};
-
-bool collides(moveDirection md)
-{
-    std::cout << md;
-    //collides is checked when the button is pressed
-    for (int i = 0; i < 5; i++)
-    {
-        for (int j = 0; j < 5; j++)
-        {
-            glm::vec3 block = blocks[i][j];
-
-            if (md == moveDirection::FRONT)
-            {
-                glm::vec3 currentLocation = eyeLocation;
-                glm::vec3 afterLocation = currentLocation + (cameraSpeed * targetLocation);
-
-                if ((float)afterLocation.z <= (float)block.z + 0.5f &&
-                    afterLocation.y <= block.y + 0.5f &&
-                    afterLocation.y >= block.y - 0.5f)
-                {
-                    std::cout << block.z << std::endl;
-                    return true;
-                }
-
-            }
-
-            if (md == moveDirection::BACKWARDS)
-            {
-
-            }
-
-            if (md == moveDirection::LEFT_SIDE)
-            {
-
-            }
-
-            if (md == moveDirection::RIGHT_SIDE)
-            {
-
-            }
-        }
-    }
-
-    return false;
-    
-}
