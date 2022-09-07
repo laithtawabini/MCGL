@@ -40,6 +40,16 @@ bool firstMouse = true;
 float yaw   = -90.0f;
 float pitch = 0.0f;
 
+float cameraSpeed = 2.5f * deltaTime;
+
+//#------------------Collision purposes-------------------#//
+enum moveDirection
+{
+    FRONT, BACKWARDS, ABOVE, BELOW, LEFT_SIDE, RIGHT_SIDE
+};
+glm::vec3 blocks[5][5];
+bool collides(moveDirection);
+    
 
 int main()
 {
@@ -75,16 +85,13 @@ int main()
         glViewport(0, 0, WIDTH, HEIGHT);
     });
 
-    
-
     //#------------------Shaders and Coordinates/shapes-------------------#// 
     unsigned int shaderID = Shader("C:\\Dev\\OpenGL\\MCGL\\MCGL\\src\\shader.glsl").ID;
 
     Cube cube;
-    Arrow arrow;
 
     unsigned int indices[] = {
-        0, 1, 3, // first triangle
+        0, 1, 3,
         1, 2, 3
     };
 
@@ -107,9 +114,6 @@ int main()
     // glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
     // glEnableVertexAttribArray(2);
 
-    
-
-
     //#------------------Textures-------------------#// 
     std::unordered_map<std::string, Texture> texs;
     
@@ -118,12 +122,10 @@ int main()
     texs["Container"]
         .addTexture("C:\\Dev\\OpenGL\\MCGL\\MCGL\\res\\textures\\Luigi.png");
     
-
     glUseProgram(shaderID);
     glUniform1i(glGetUniformLocation(shaderID, "texture1"), 0);
     glUniform1i(glGetUniformLocation(shaderID, "texture2"), 1);
     
-
     //#------------------Transformations-------------------#//
     glm::mat4 model,
               view,
@@ -139,8 +141,7 @@ int main()
     //#------------------Additional Configuration-------------------#// 
 
     glEnable(GL_DEPTH_TEST);  
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     //#------------------Main Rendering Loop-------------------#// 
     while(!glfwWindowShouldClose(window))
@@ -170,12 +171,13 @@ int main()
                 model = glm::mat4(1.0f);
                 
                 //configure positions
-                model = glm::translate(model, glm::vec3(0.0f - i, 0.0f , 0.0f - z));
+                glm::vec3 positionInWorld = glm::vec3(0.0f - i, 0.0f, 0.0f - z);
+                model = glm::translate(model, positionInWorld);
 
+                blocks[z][i] = positionInWorld;
                 //send data
                 glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
                 
-
                 //draw
                 glBindVertexArray(VAO);
                 glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -197,17 +199,17 @@ void processInput(GLFWwindow* window)
 {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-
-    const float cameraSpeed = 2.5f * deltaTime;
     
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    cameraSpeed = 2.5f * deltaTime;
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && !collides(moveDirection::FRONT))
         eyeLocation += cameraSpeed * targetLocation;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS && !collides(moveDirection::BACKWARDS))
         eyeLocation -= cameraSpeed * targetLocation;
     
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS && !collides(moveDirection::LEFT_SIDE))
         eyeLocation -= glm::normalize(glm::cross(targetLocation, up)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && !collides(moveDirection::RIGHT_SIDE))
         eyeLocation += glm::normalize(glm::cross(targetLocation, up)) * cameraSpeed;
     
     if (glfwGetKey(window, GLFW_KEY_SPACE))
@@ -221,7 +223,7 @@ void mouseCallback(GLFWwindow* window, double xposIn, double yposIn)
 {
     float xpos = static_cast<float>(xposIn);
     float ypos = static_cast<float>(yposIn);
-
+    
     if (firstMouse)
     {
         lastX = xpos;
@@ -229,6 +231,8 @@ void mouseCallback(GLFWwindow* window, double xposIn, double yposIn)
         firstMouse = false;
     }
 
+    //Calculating the change in x and y from previous x and y and the changed ones
+    //offset = change (displacement)
     float xoffset = xpos - lastX;
     float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
     lastX = xpos;
@@ -244,6 +248,7 @@ void mouseCallback(GLFWwindow* window, double xposIn, double yposIn)
     // prevent screen from flipping
     if (pitch > 89.0f)
         pitch = 89.0f;
+
     if (pitch < -89.0f)
         pitch = -89.0f;
 
@@ -254,3 +259,49 @@ void mouseCallback(GLFWwindow* window, double xposIn, double yposIn)
 
     targetLocation = glm::normalize(target);
 };
+
+bool collides(moveDirection md)
+{
+    std::cout << md;
+    //collides is checked when the button is pressed
+    for (int i = 0; i < 5; i++)
+    {
+        for (int j = 0; j < 5; j++)
+        {
+            glm::vec3 block = blocks[i][j];
+
+            if (md == moveDirection::FRONT)
+            {
+                glm::vec3 currentLocation = eyeLocation;
+                glm::vec3 afterLocation = currentLocation + (cameraSpeed * targetLocation);
+
+                if ((float)afterLocation.z <= (float)block.z + 0.5f &&
+                    afterLocation.y <= block.y + 0.5f &&
+                    afterLocation.y >= block.y - 0.5f)
+                {
+                    std::cout << block.z << std::endl;
+                    return true;
+                }
+
+            }
+
+            if (md == moveDirection::BACKWARDS)
+            {
+
+            }
+
+            if (md == moveDirection::LEFT_SIDE)
+            {
+
+            }
+
+            if (md == moveDirection::RIGHT_SIDE)
+            {
+
+            }
+        }
+    }
+
+    return false;
+    
+}
