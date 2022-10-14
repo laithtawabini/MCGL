@@ -367,3 +367,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/Revision
+/MCGL/OpenGL_PropertySheet.props
+/MCGL/OGL_PropertySheet.props
+/OpenGL_PropertySheet.props

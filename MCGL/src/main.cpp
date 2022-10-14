@@ -2,24 +2,29 @@
 // #include "vendor/imgui/imgui_impl_opengl3.h"
 // #include "vendor/imgui/imgui_impl_glfw.h"
 #include "Texture.h"
-#include "Shader.h"
-#include "VertexBuffer.h"
-#include "IndexBuffer.h"
-#include "Cube.h"
+
+#include "graphics/Shader.h"
+#include "graphics/VertexArray.h"
+
+#include "world/Cube.h"
+#include "camera/Camera.h"
 
 #include <iostream>
 #include <vector>
 #include <unordered_map>
-#include "Camera.h"
+#include <set>
 #include "vendor/glm/glm.hpp"
 #include "vendor/glm/gtc/matrix_transform.hpp"
 #include "vendor/glm/gtc/type_ptr.hpp"
 
+
 void processInput(GLFWwindow* window);
+void mouse_movement_callback(GLFWwindow* window, double xposIn, double yposIn);
+
 
 //#------------------Window settings-------------------#//
-const unsigned int WIDTH  = 1280;
-const unsigned int HEIGHT = 720; 
+const unsigned int WIDTH = 1280;
+const unsigned int HEIGHT = 720;
 
 //#------------------Timings---------------------#//
 float deltaTime = 0.0f;
@@ -42,153 +47,126 @@ int main()
 
     GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "OpenGL", nullptr, nullptr);
 
-    if(!window)
+    if (!window)
     {
         std::cout << "Failed to create window\n";
         glfwTerminate();
         exit(-1);
     }
-    
+
     glfwMakeContextCurrent(window);
 
-    glfwSetCursorPosCallback(window, [](GLFWwindow* window, double xposIn, double yposIn) {
-        float xpos = static_cast<float>(xposIn);
-        float ypos = static_cast<float>(yposIn);
-
-        if (firstMouse)
-        {
-            lastX = xpos;
-            lastY = ypos;
-            firstMouse = false;
-        }
-
-        float xoffset = xpos - lastX;
-        float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-
-        lastX = xpos;
-        lastY = ypos;
-
-        camera.ProcessMouseMovement(xoffset, yoffset);
-        });
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(window, mouse_movement_callback);
     //this is called whenever you move the cursor
 
-    if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cout << "Failed to init GLAD\n";
-        exit(-1); 
+        exit(-1);
     }
 
     glViewport(0, 0, WIDTH, HEIGHT);
 
     glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int WIDHT, int HEIGHT) {
         glViewport(0, 0, WIDTH, HEIGHT);
-    });
+        });
 
-    //#------------------Shaders and Coordinates/shapes-------------------#// 
-    unsigned int shaderID = Shader("C:\\Dev\\OpenGL\\MCGL\\MCGL\\src\\shader.glsl").ID;
-
+    //#------------------Shaders and Coordinates/shapes to be rendered-------------------#// 
+    Shader cubeShader("C:\\Dev\\OpenGL\\MCGL\\MCGL\\res\\shaders\\shader.glsl");
     Cube cube;
 
-    unsigned int indices[] = {
-        0, 1, 3,
-        1, 2, 3
-    };
-
     //#------------------Cube Data buffers-------------------#// 
-    unsigned int VAO;
-    glGenVertexArrays(1, &VAO);
+    VertexArray VAO;
+    VertexBuffer VBO(&(cube.getVertices()[0]), cube.getSizeOfData());
+    VertexBufferLayout layout;
 
-    // VertexBuffer VBO(vertices, sizeof(vertices));
-    VertexBuffer VBO(cube.getVertices(), cube.getSizeOfData());
-    IndexBuffer IBO(indices, sizeof(indices));
+    layout.PushElement(GL_FLOAT, 3);
+    layout.PushElement(GL_FLOAT, 2);
 
-    glBindVertexArray(VAO);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-
-    // glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-    // glEnableVertexAttribArray(2);
+    VAO.AddBuffer(VBO, layout);
 
     //#------------------Textures-------------------#// 
     std::unordered_map<std::string, Texture> texs;
-    
+    std::set<int> set;
+
     texs["Container"]
         .addTexture("C:\\Dev\\OpenGL\\MCGL\\MCGL\\res\\textures\\Container.jpg");
     texs["Container"]
         .addTexture("C:\\Dev\\OpenGL\\MCGL\\MCGL\\res\\textures\\Luigi.png");
-    
-    glUseProgram(shaderID);
-    glUniform1i(glGetUniformLocation(shaderID, "texture1"), 0);
-    glUniform1i(glGetUniformLocation(shaderID, "texture2"), 1);
-    
+
+    cubeShader.Use();
+    cubeShader.SetUniform1i("texture1", 0);
+    cubeShader.SetUniform1i("texture2", 1);
+
     //#------------------Transformations-------------------#//
-    glm::mat4 model,
-              view,
-              projection = glm::mat4(1.0f);
+    glm::mat4 modelMat,
+              viewMat,
+              projectionMat = glm::mat4(1.0f);
 
-    uint32_t modelLoc      = glGetUniformLocation(shaderID, "model"),
-             viewLoc       = glGetUniformLocation(shaderID, "view"),
-             projectionLoc = glGetUniformLocation(shaderID, "projection");
 
-    projection = glm::perspective(glm::radians(60.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-    
+    projectionMat = glm::perspective(glm::radians(60.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+    cubeShader.SetUniformMat4("projection", projectionMat);
     //#------------------Additional Configuration-------------------#// 
-
-    glEnable(GL_DEPTH_TEST);  
+    
+    glEnable(GL_DEPTH_TEST);
+    
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    
 
     //#------------------Main Rendering Loop-------------------#// 
-    while(!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(window))
     {
-
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
         processInput(window);
-        
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+  
+        glm::vec3 clearColor = glm::normalize(glm::vec3(0, 230, 240));
+        glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glUseProgram(shaderID);
+        cubeShader.Use();
         texs["Container"].Bind();
 
-        projection = glm::perspective(camera.Zoom, (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
-        view = camera.GetViewMatrix();
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-        for(int z = 0; z < 5; z++)
+        projectionMat = glm::perspective(camera.m_Zoom, (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+        viewMat = camera.GetViewMatrix();
+        cubeShader.SetUniformMat4("view", viewMat);
+        
+        for (int y = 0; y < 3; y++)
         {
-            for(int i = 0; i < 5; i++)
+            for (int z = 0; z < 16; z++)
             {
-                //initialize
-                model = glm::mat4(1.0f);
-                
-                //configure positions
-                glm::vec3 positionInWorld = glm::vec3(0.0f - i, 0.0f, 0.0f - z);
-                model = glm::translate(model, positionInWorld);
+                for (int x = 0; x < 16; x++)
+                {
+                    //initialize
+                    modelMat = glm::mat4(1.0f);
 
-                //send data
-                glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-                
-                //draw
-                glBindVertexArray(VAO);
-                glDrawArrays(GL_TRIANGLES, 0, 36);
+                    //configure positions
+                    glm::vec3 positionInWorld = glm::vec3(0.0f - x, 0.0f - y, 0.0f - z);
+                    modelMat = glm::translate(modelMat, positionInWorld);
+                    //we have block positions, 
+                    //send data
+                    
+                    cubeShader.SetUniformMat4("model", modelMat);
+
+                    //draw
+
+                    VAO.Bind();
+
+                    //draw
+                    //TODO: update 36 and 0 , make it depend on block rendered
+                    glDrawArrays(GL_TRIANGLES, 0, 36);
+                }
             }
         }
 
         glfwSwapBuffers(window);
-		glfwPollEvents();
+        glfwPollEvents();
     }
 
     //#------------------Freeing memory-------------------#// 
-    glDeleteVertexArrays(1, &VAO);
-
+    
     glfwTerminate();
 }
 
@@ -197,21 +175,41 @@ void processInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-    
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.ProcessKeyboard(Camera_Movement::FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
         camera.ProcessKeyboard(Camera_Movement::BACKWARD, deltaTime);
-    
+
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
         camera.ProcessKeyboard(Camera_Movement::LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.ProcessKeyboard(Camera_Movement::RIGHT, deltaTime);
-    
-    /*if (glfwGetKey(window, GLFW_KEY_SPACE))
-        eyeLocation += up * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT))
-        eyeLocation -= up * cameraSpeed;*/
 
+    if (glfwGetKey(window, GLFW_KEY_SPACE))
+        camera.ProcessKeyboard(Camera_Movement::UP, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT))
+        camera.ProcessKeyboard(Camera_Movement::DOWN, deltaTime);
+}
+
+void mouse_movement_callback(GLFWwindow* window, double xposIn, double yposIn)
+{
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
+
+    if (firstMouse)
+    {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+
+    lastX = xpos;
+    lastY = ypos;
+
+    camera.ProcessMouseMovement(xoffset, yoffset);
 }
 

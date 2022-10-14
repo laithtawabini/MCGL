@@ -19,10 +19,16 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\Camera.h" />
-    <ClInclude Include="src\Cube.h" />
-    <ClInclude Include="src\IndexBuffer.h" />
-    <ClInclude Include="src\Shader.h" />
+    <ClInclude Include="src\graphics\VertexBufferLayout.h" />
+    <ClInclude Include="src\graphics\CubeRenderer.h" />
+    <ClInclude Include="src\MCGL.h" />
+    <ClInclude Include="src\Window.h" />
+    <ClInclude Include="src\world\Block.h" />
+    <ClInclude Include="src\camera\Camera.h" />
+    <ClInclude Include="src\world\Chunk.h" />
+    <ClInclude Include="src\world\Cube.h" />
+    <ClInclude Include="src\graphics\IndexBuffer.h" />
+    <ClInclude Include="src\graphics\Shader.h" />
     <ClInclude Include="src\Texture.h" />
     <ClInclude Include="src\vendor\glm\common.hpp" />
     <ClInclude Include="src\vendor\glm\detail\compute_common.hpp" />
@@ -316,17 +322,25 @@
     <ClInclude Include="src\vendor\imgui\imstb_textedit.h" />
     <ClInclude Include="src\vendor\imgui\imstb_truetype.h" />
     <ClInclude Include="src\vendor\stb_image.h" />
-    <ClInclude Include="src\VertexBuffer.h" />
+    <ClInclude Include="src\graphics\VertexBuffer.h" />
+    <ClInclude Include="src\graphics\VertexArray.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\glad.c" />
-    <ClCompile Include="src\IndexBuffer.cpp" />
-    <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\Shader.cpp" />
-    <ClCompile Include="src\VertexBuffer.cpp" />
+    <ClCompile Include="src\application.cpp" />
+    <ClCompile Include="src\graphics\CubeRenderer.cpp" />
+    <ClCompile Include="src\MCGL.cpp" />
+    <ClCompile Include="src\Texture.cpp" />
+    <ClCompile Include="src\Window.cpp" />
+    <ClCompile Include="src\world\Cube.cpp" />
+    <ClCompile Include="src\vendor\glad.c" />
+    <ClCompile Include="src\graphics\IndexBuffer.cpp" />
+    <ClCompile Include="src\graphics\Shader.cpp" />
+    <ClCompile Include="src\Source.cpp" />
+    <ClCompile Include="src\graphics\VertexBuffer.cpp" />
+    <ClCompile Include="src\graphics\VertexArray.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\shader.glsl" />
+    <None Include="res\shaders\shader.glsl" />
     <None Include="src\vendor\glm\detail\func_common.inl" />
     <None Include="src\vendor\glm\detail\func_common_simd.inl" />
     <None Include="src\vendor\glm\detail\func_exponential.inl" />
@@ -466,6 +480,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\textures\awesomeface.png" />
+    <Image Include="res\textures\blocks\grass_block.png" />
     <Image Include="res\textures\container.jpg" />
     <Image Include="res\textures\dirt.png" />
     <Image Include="res\textures\grass.png" />
@@ -512,15 +527,23 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="OpenGL_PropertySheet.props" />
+    <Import Project="OGL_PropertySheet.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="OpenGL_PropertySheet.props" />
+    <Import Project="OGL_PropertySheet.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="OpenGL_PropertySheet.props" />
+    <Import Project="OGL_PropertySheet.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="OpenGL_PropertySheet.props" />
+    <Import Project="OGL_PropertySheet.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
