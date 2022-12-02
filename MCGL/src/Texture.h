@@ -27,6 +27,7 @@ public:
 
 private:
     uint32_t m_TextureID;
+    static uint32_t m_nOfTextures;
 };
 
 

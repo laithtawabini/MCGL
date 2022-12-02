@@ -1,5 +1,7 @@
 #include "Texture.h"
 
+uint32_t Texture::m_nOfTextures = 0;
+
 Texture::Texture(const std::string& path)
 {
     glGenTextures(1, &m_TextureID);
@@ -30,7 +32,10 @@ Texture::Texture(const std::string& path)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
     glGenerateMipmap(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE0, m_TextureID);
+    
+    glBindTexture(GL_TEXTURE0 + m_nOfTextures, m_TextureID);
+
+    m_nOfTextures++;
 
     stbi_image_free(data);
 }

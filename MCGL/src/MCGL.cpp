@@ -4,7 +4,7 @@
 #define HEIGHT 720
 
 //#------------------Camera---------------------#//
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, 0.0f, 0.0f));
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -12,6 +12,29 @@ bool firstMouse = true;
 //#------------------Timings---------------------#//
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
+
+double lastTime = 0;
+int nbFrames = 0;
+
+void showFPS(GLFWwindow* pWindow)
+{
+    double currentTime = glfwGetTime();
+    double delta = currentTime - lastTime;
+
+    nbFrames++;
+    if (delta >= 1.0)
+    {
+        double fps = double(nbFrames) / delta;
+
+        std::stringstream ss;
+        ss << "FPS: " << fps;
+        
+        glfwSetWindowTitle(pWindow, ss.str().c_str());
+
+        nbFrames = 0;
+        lastTime = currentTime;
+    }
+}
 
 void mouseMovementCallback(GLFWwindow* window, double xposIn, double yposIn)
 {
@@ -26,7 +49,7 @@ void mouseMovementCallback(GLFWwindow* window, double xposIn, double yposIn)
     }
 
     float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    float yoffset = lastY - ypos; //y goes from bottom to top
 
     lastX = xpos;
     lastY = ypos;
@@ -37,8 +60,6 @@ void mouseMovementCallback(GLFWwindow* window, double xposIn, double yposIn)
 MCGL::MCGL(): window("MCGL", 1280, 720)
 {
     glfwSetInputMode(window.Get(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-    //called when cursor is moved
     glfwSetCursorPosCallback(window.Get(), mouseMovementCallback);
 }
 
@@ -49,69 +70,71 @@ MCGL::~MCGL()
 
 void MCGL::Run()
 {
-    //setting up the renderer
     Shader cubeShader("C:\\Dev\\OpenGL\\MCGL\\MCGL\\res\\shaders\\shader.glsl");
     cubeShader.Use();
 
-    //#------------------Shaders and Coordinates/shapes to be rendered-------------------#// 
-    Cube cube;
-    VertexArray VAO;
-    VertexBuffer VBO(&(cube.getVertices()[0]), cube.getSizeOfData());
-    VertexBufferLayout layout;
+    Chunk c { 0,0 };
+    c.Update();
 
-    layout.PushElement(GL_FLOAT, 3);
-    layout.PushElement(GL_FLOAT, 2);
-
-    VAO.AddBuffer(VBO, layout);
-
-    CubeRenderer cubeRenderer(VAO, cubeShader);
+    std::vector<GLbyte> data = c.RetrieveData();
     
+    //std::ranges::copy(data1, std::back_inserter(data));
+    VertexArray va;
+    VertexBuffer chunkDataBuffer(&data[0], data.size() * sizeof(char));
+    VertexBufferLayout blockDataLayout;
+    
+    blockDataLayout.PushElementByte(3, false);
+    blockDataLayout.PushElementByte(2, false);
+
+    va.AddBuffer(chunkDataBuffer, blockDataLayout);
+
     //#------------------Textures-------------------#// 
-    Texture blockTex("C:\\Dev\\OpenGL\\MCGL\\MCGL\\res\\textures\\blocks\\grass_block.png");
+    Texture blockTex("C:\\Dev\\OpenGL\\MCGL\\MCGL\\res\\textures\\blocks\\tilemap.png");
     
     blockTex.Bind();
+
     cubeShader.SetUniform1i("texture1", 0);
 
     //#------------------Transformations-------------------#//
-    glm::mat4 viewMat, projectionMat = glm::mat4(1.0f);
+    glm::mat4 viewMat, projectionMat, modelMat;
+    modelMat = projectionMat = glm::mat4(1.0f);
 
-    projectionMat = glm::perspective(glm::radians(60.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
+    projectionMat = glm::perspective(glm::radians(60.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 200.0f);
     cubeShader.SetUniformMat4("projection", projectionMat);
+
+    modelMat = glm::translate(modelMat, glm::vec3(0,0,0));
+    cubeShader.SetUniformMat4("model", modelMat);
 
     //#------------------Additional Configuration-------------------#// 
     glEnable(GL_DEPTH_TEST);
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-
     while (!window.ShouldClose())
     {
         {
-            float currentFrame = glfwGetTime();
+            double currentFrame = glfwGetTime();
             deltaTime = currentFrame - lastFrame;
             lastFrame = currentFrame;
         }
 
+        showFPS(window.Get());
         ProcessInput();
-
+        
         glm::vec3 clearColor = glm::normalize(glm::vec3(0, 230, 240));
         glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         cubeShader.Use();
+        va.Bind();
         viewMat = camera.GetViewMatrix();
         cubeShader.SetUniformMat4("view", viewMat);
 
-        for (int y = 0; y < 3; y++)
-            for (int z = 0; z < 16; z++)
-                for (int x = 0; x < 16; x++)
-                    cubeRenderer.DrawCube(glm::vec3(0.0f - x, 0.0f - y, 0.0f - z), blockTex);
-        
+        c.Render(va, cubeShader);
+
         window.SwapBuffers();
         window.PollEvents();
     }
-    
 
-    
 }
 
 void MCGL::ProcessInput()

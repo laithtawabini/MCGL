@@ -5,7 +5,7 @@ VertexArray::VertexArray()
 	glGenVertexArrays(1, &vaoID);
 	this->Bind();
 }
-
+#include <iostream>
 void VertexArray::AddBuffer(const VertexBuffer& vb, const VertexBufferLayout& layout)
 {
 	this->Bind();
@@ -17,16 +17,35 @@ void VertexArray::AddBuffer(const VertexBuffer& vb, const VertexBufferLayout& la
 	for (const auto& element : layout.GetElements())
 	{
 		glEnableVertexAttribArray(index);
-		glVertexAttribPointer(
-			index,
-			element.countOfValues,
-			element.valuesType,
-			element.isNormalized,
-			layout.GetStride(),
-			(void*) offset
-		);
 
-		offset += element.countOfValues * sizeof(element.valuesType);
+		if (element.valuesType == TYPE::BYTE)
+		{
+			glVertexAttribPointer(
+				index,
+				element.countOfValues,
+				GL_BYTE,
+				element.isNormalized,
+				layout.GetStride(),
+				(void*)offset
+			);
+		}
+		else
+		{
+			glVertexAttribPointer(
+				index,
+				element.countOfValues,
+				GL_FLOAT,
+				element.isNormalized,
+				layout.GetStride(),
+				(void*) offset
+			);
+		}
+
+		if (element.valuesType == TYPE::BYTE)
+			offset += element.countOfValues * sizeof(char);
+		else 
+			offset += element.countOfValues * sizeof(float);
+
 		index++;
 	}
 }

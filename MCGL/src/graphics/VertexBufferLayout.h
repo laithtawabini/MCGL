@@ -1,10 +1,14 @@
 #pragma once
 #include <vector>
 
+enum class TYPE {
+	FLOAT, BYTE
+};
+
 struct VertexBufferElement
 {
 	unsigned int countOfValues;
-	unsigned int valuesType;
+	TYPE valuesType;
 	unsigned int isNormalized;
 };
 
@@ -19,10 +23,17 @@ public:
 		m_Elements.push_back({layoutIndex, nOfValues, T, GL_FALSE, stride, offset});
 	}*/
 
-	void PushElement(uint32_t type, uint32_t countOfValues) 
+	void PushElementFloat(uint32_t countOfValues) 
 	{
-		m_Elements.push_back({ countOfValues, type, GL_FALSE });
+		m_Elements.push_back({ countOfValues, TYPE::FLOAT, GL_FALSE });
 		m_Stride += countOfValues * sizeof(float);
+	}
+
+
+	void PushElementByte(uint32_t countOfValues, bool normalized)
+	{
+		m_Elements.push_back({ countOfValues, TYPE::BYTE, normalized });
+		m_Stride += countOfValues * sizeof(char);
 	}
 
 	const auto& GetElements() const

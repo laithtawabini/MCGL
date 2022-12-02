@@ -6,8 +6,8 @@ class VertexBuffer
 {
 public:
     VertexBufferLayout layout;
-
-    VertexBuffer(const void* data, unsigned int size);
+    VertexBuffer() = default;
+    VertexBuffer(const void* data, unsigned long long size);
     ~VertexBuffer();
 
     void Bind() const;

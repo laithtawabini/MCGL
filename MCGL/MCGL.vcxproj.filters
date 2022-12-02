@@ -909,9 +909,6 @@
     <ClInclude Include="src\camera\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\world\Chunk.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\world\Block.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -928,6 +925,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Window.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\Chunk.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\graphics\Worldchunk.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -966,6 +969,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Texture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\Chunk.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\Worldchunk.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -1397,6 +1406,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="res\textures\blocks\grass_block.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\textures\blocks\tilemap.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
