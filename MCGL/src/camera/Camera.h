@@ -1,9 +1,9 @@
 #pragma once
 
 #include <glad/glad.h>
-#include "vendor/glm/glm.hpp"
-#include "vendor/glm/gtc/matrix_transform.hpp"
-
+#include "../vendor/glm/glm.hpp"
+#include "../vendor/glm/gtc/matrix_transform.hpp"
+#include "../vendor/glm/glm.hpp"
 #include <vector>
 
 enum class Camera_Movement {
