@@ -28,8 +28,6 @@ Window::Window(std::string windowName, const uint32_t WIDTH, const uint32_t HEIG
 
     glfwMakeContextCurrent(window);
 
-    
-    //this is called whenever you move the cursor
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cout << "Failed to init GLAD\n";
