@@ -4,6 +4,9 @@ OpenGL 3D rendering
 - Batch rendering is used for optimal performance and for the least amount of draw calls
 - A texture atlas is used
 
+
+
+Example of a loaded chunk of blocks:
 ![image](https://github.com/laithtawabini/MCGL/assets/75672689/5f920291-e2fc-4499-9311-6e2fefb51ec5)
 
 
